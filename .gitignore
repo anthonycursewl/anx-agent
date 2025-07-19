@@ -1,8 +1,3 @@
-agentcli
-agentcli.exe
-main
-main.exe
-*.exe
 *.bin
 *.out
 
@@ -31,6 +26,8 @@ Desktop.ini
 .env
 config.local.yaml
 config.local.json
+config.yaml
+config.yml
 
 *.log
 logs/
