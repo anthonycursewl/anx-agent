@@ -1,4 +1,3 @@
-// internal/ai/anx.gemini.go
 package ai
 
 import (
@@ -35,7 +34,7 @@ func (c *Client) CallModel(prompt string) (string, error) {
 	}
 
 	ctx := context.Background()
-	model := c.genaiClient.GenerativeModel("gemini-pro")
+	model := c.genaiClient.GenerativeModel("gemini-2.5-flash")
 	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
 
 	if err != nil {
