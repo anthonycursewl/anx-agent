@@ -28,6 +28,10 @@ func NewClient(apiKey string) (*Client, error) {
 	return &Client{genaiClient: client}, nil
 }
 
+func (c *Client) GetResponse(prompt string) (string, error) {
+	return c.CallModel(prompt)
+}
+
 func (c *Client) CallModel(prompt string) (string, error) {
 	if c.genaiClient == nil {
 		return "", fmt.Errorf("AI client not initialized")
@@ -46,7 +50,6 @@ func (c *Client) CallModel(prompt string) (string, error) {
 	}
 
 	return "", fmt.Errorf("no text content found in response")
-
 }
 
 func (c *Client) Close() error {
