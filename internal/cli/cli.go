@@ -48,12 +48,23 @@ const (
 	modeCreateFileInput
 	modeAIFilenameInput
 	modeAIPromptInput
+	modeAIModifyInput
 )
 
 type aiResponseMsg string
 type aiFileContentMsg struct {
 	fileName string
 	content  string
+}
+
+type aiModifiedContentMsg struct {
+	path    string
+	content string
+}
+
+type fileReadMsg struct {
+	path    string
+	content []byte
 }
 type fileWrittenMsg string
 type errMsg struct{ err error }
@@ -75,19 +86,21 @@ func (i item) Description() string { return i.path }
 func (i item) FilterValue() string { return i.path }
 
 type model struct {
-	aiClient         *ai.Client
-	commands         map[string]Command
-	list             list.Model
-	textInput        textinput.Model
-	messages         []string
-	spinner          spinner.Model
-	loading          bool
-	width            int
-	height           int
-	mode             int
-	currentPath      string
-	styles           styles
-	fileCreationName string
+	aiClient                *ai.Client
+	commands                map[string]Command
+	list                    list.Model
+	textInput               textinput.Model
+	messages                []string
+	spinner                 spinner.Model
+	loading                 bool
+	width                   int
+	height                  int
+	mode                    int
+	currentPath             string
+	styles                  styles
+	fileCreationName        string
+	fileModificationPath    string
+	fileModificationContent string
 }
 
 type Command struct {
@@ -98,7 +111,7 @@ type Command struct {
 
 func initialModel(aiClient *ai.Client) model {
 	ti := textinput.New()
-	ti.Placeholder = "Escribe un mensaje o comando ('help' para ayuda)..."
+	ti.Placeholder = "Write a message or command ('help' to show help)..."
 	ti.Focus()
 	ti.CharLimit = 1024
 	ti.Width = 50
@@ -112,21 +125,22 @@ func initialModel(aiClient *ai.Client) model {
 	delegate.Styles.SelectedTitle = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, false, false, true).BorderForeground(lipgloss.Color("#C472DA")).Foreground(lipgloss.Color("#C472DA")).Padding(0, 0, 0, 1)
 	delegate.Styles.SelectedDesc = delegate.Styles.SelectedTitle.Copy()
 	l := list.New(items, delegate, 0, 0)
-	l.Title = "Explorador de Archivos"
+	l.Title = "File Explorer"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.AdditionalShortHelpKeys = func() []key.Binding {
 		return []key.Binding{
-			key.NewBinding(key.WithKeys("q", "esc"), key.WithHelp("q/esc", "volver")),
-			key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "crear vacío")),
-			key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "crear con IA")),
+			key.NewBinding(key.WithKeys("q", "esc"), key.WithHelp("q/esc", "back")),
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open/modify")),
+			key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "create empty")),
+			key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "create with AI")),
 		}
 	}
 
 	m := model{
 		aiClient:    aiClient,
 		textInput:   ti,
-		messages:    []string{"info:Bienvenido al Agente ANX. Escribe 'help' para ver los comandos disponibles."},
+		messages:    []string{"info:Welcome to ANX Agent. Write 'help' to show help."},
 		spinner:     s,
 		currentPath: ".",
 		list:        l,
@@ -141,32 +155,32 @@ func initialModel(aiClient *ai.Client) model {
 func (m *model) registerCommands() {
 	m.commands = map[string]Command{
 		"help": {
-			Name: "help", Description: "Muestra este mensaje de ayuda",
+			Name: "help", Description: "Show this help message",
 			Execute: helpCommand,
 		},
 		"ls": {
-			Name: "ls", Description: "Muestra el explorador de archivos",
+			Name: "ls", Description: "Show the file explorer",
 			Execute: listCommand,
 		},
 		"exit": {
-			Name: "exit", Description: "Sale de la aplicación",
+			Name: "exit", Description: "Exit the application",
 			Execute: exitCommand,
 		},
 		"quit": {
-			Name: "quit", Description: "Alias para 'exit'",
+			Name: "quit", Description: "Alias for 'exit'",
 			Execute: exitCommand,
 		},
 	}
 }
 
 func helpCommand(m *model, args []string) tea.Cmd {
-	helpText := "Comandos Disponibles:\n"
+	helpText := "Available commands:\n"
 	for name, cmd := range m.commands {
 		helpText += fmt.Sprintf("  %-15s %s", name, cmd.Description)
 		m.messages = append(m.messages, "info:"+helpText)
 		helpText = ""
 	}
-	m.messages = append(m.messages, "info:\nEn el explorador ('ls'):\n  'c' para crear archivo vacío\n  'a' para crear archivo con IA")
+	m.messages = append(m.messages, "info:\nIn the explorer ('ls'):\n  'enter' to open dir or modify file\n  'c' to create empty file\n  'a' to create file with AI")
 	return nil
 }
 
@@ -176,8 +190,18 @@ func listCommand(m *model, args []string) tea.Cmd {
 }
 
 func exitCommand(m *model, args []string) tea.Cmd {
-	m.messages = append(m.messages, "info:¡Hasta luego!")
+	m.messages = append(m.messages, "info:Goodbye!")
 	return tea.Quit
+}
+
+func (m *model) readFileContent(filePath string) tea.Cmd {
+	return func() tea.Msg {
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			return errMsg{err}
+		}
+		return fileReadMsg{path: filePath, content: content}
+	}
 }
 
 func (m *model) listDirectory(path string) tea.Cmd {
@@ -246,8 +270,6 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
-
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -268,21 +290,35 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case aiFileContentMsg:
-		m.messages = append(m.messages, "info:Contenido generado por IA. Escribiendo en archivo...")
+		m.messages = append(m.messages, "info:Content generated by AI. Writing to file...")
 		return m, m.createFileWithContent(msg.fileName, msg.content)
+
+	case fileReadMsg:
+		m.loading = false
+		m.mode = modeAIModifyInput
+		m.fileModificationPath = msg.path
+		m.fileModificationContent = string(msg.content)
+		m.messages = append(m.messages, "info:File '"+filepath.Base(msg.path)+"' read. How do you want to modify it?")
+		m.textInput.Placeholder = "Ej: 'Add a comment to the main function'..."
+		m.textInput.Focus()
+		return m, textinput.Blink
+
+	case aiModifiedContentMsg:
+		m.messages = append(m.messages, "info:Content modified by AI. Writing changes...")
+		return m, m.createFileWithContent(msg.path, msg.content)
 
 	case fileWrittenMsg:
 		m.loading = false
-		m.messages = append(m.messages, "info:✅ Archivo creado/escrito: "+string(msg))
-		m.mode = modeChat
-		m.textInput.Placeholder = "Escribe un mensaje o comando..."
+		m.messages = append(m.messages, "info:✅ File created/modified: "+string(msg))
+		m.mode = modeExplorer
+		m.textInput.Placeholder = "Write a message or command..."
 		return m, m.listDirectory(m.currentPath)
 
 	case tea.KeyMsg:
 		if m.mode == modeExplorer {
 			return m.updateExplorer(msg)
 		}
-		if m.mode == modeChat || m.mode == modeCreateFileInput || m.mode == modeAIFilenameInput || m.mode == modeAIPromptInput {
+		if m.mode == modeChat || m.mode == modeCreateFileInput || m.mode == modeAIFilenameInput || m.mode == modeAIPromptInput || m.mode == modeAIModifyInput {
 			return m.updateTextInputModes(msg)
 		}
 	}
@@ -290,15 +326,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.loading {
 		spinner, cmd := m.spinner.Update(msg)
 		m.spinner = spinner
-		cmds = append(cmds, cmd)
+		return m, cmd
 	}
 
-	return m, tea.Batch(cmds...)
+	return m, nil
 }
 
 func (m *model) updateTextInputModes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
 	switch msg.Type {
 	case tea.KeyCtrlC:
 		return m, tea.Quit
@@ -306,6 +340,9 @@ func (m *model) updateTextInputModes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.mode = modeExplorer
 		m.textInput.Reset()
 		m.textInput.Placeholder = "Write a message or command..."
+		m.fileCreationName = ""
+		m.fileModificationPath = ""
+		m.fileModificationContent = ""
 		return m, nil
 
 	case tea.KeyEnter:
@@ -341,7 +378,7 @@ func (m *model) updateTextInputModes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case modeAIFilenameInput:
 			m.fileCreationName = filepath.Join(m.currentPath, input)
 			m.mode = modeAIPromptInput
-			m.textInput.Placeholder = "Describe what the file should accomplish..."
+			m.textInput.Placeholder = "Describe what sould do the file..."
 			m.messages = append(m.messages, "info:File to create: "+m.fileCreationName)
 			return m, textinput.Blink
 
@@ -364,9 +401,35 @@ func (m *model) updateTextInputModes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					return aiFileContentMsg{fileName: fileName, content: res}
 				},
 			)
+
+		case modeAIModifyInput:
+			m.loading = true
+			instructions := input
+			originalContent := m.fileModificationContent
+			filePath := m.fileModificationPath
+			m.messages = append(m.messages, "user: "+instructions)
+			m.mode = modeChat
+
+			finalPrompt := fmt.Sprintf(
+				"You are an expert file editor. The user wants to modify a file. Below is the original content of the file and the user's instructions. Your task is to return the *entire*, *new* content of the file with the modifications applied. \n\nIMPORTANT: Only output the raw, complete, modified file content. Do not include any explanations, greetings, or markdown code fences like ```go ... ```.\n\n--- ORIGINAL FILE CONTENT ---\n%s\n\n--- USER INSTRUCTIONS ---\n%s",
+				originalContent,
+				instructions,
+			)
+
+			return m, tea.Batch(
+				m.spinner.Tick,
+				func() tea.Msg {
+					res, err := m.aiClient.GetResponse(finalPrompt)
+					if err != nil {
+						return errMsg{err}
+					}
+					return aiModifiedContentMsg{path: filePath, content: res}
+				},
+			)
 		}
 	}
 
+	var cmd tea.Cmd
 	m.textInput, cmd = m.textInput.Update(msg)
 	return m, cmd
 }
@@ -378,14 +441,15 @@ func (m *model) updateExplorer(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "c":
 		m.mode = modeCreateFileInput
-		m.textInput.Placeholder = "Name of the new empty file..."
+		m.textInput.Placeholder = "New file name (empty)..."
 		m.textInput.Focus()
 		return m, textinput.Blink
 	case "a":
 		m.mode = modeAIFilenameInput
-		m.textInput.Placeholder = "Name of the file to generate by AI..."
+		m.textInput.Placeholder = "File name to generate by AI..."
 		m.textInput.Focus()
 		return m, textinput.Blink
+
 	case "enter":
 		selectedItem, ok := m.list.SelectedItem().(item)
 		if !ok {
@@ -400,9 +464,9 @@ func (m *model) updateExplorer(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if selectedItem.isDir {
 			return m, m.listDirectory(targetPath)
 		} else {
-			m.mode = modeChat
-			m.messages = append(m.messages, "info:Selected: "+targetPath)
-			return m, nil
+			m.loading = true
+			m.messages = append(m.messages, "info:Reading file "+targetPath+" to modify...")
+			return m, m.readFileContent(targetPath)
 		}
 	}
 
@@ -443,17 +507,19 @@ func (m model) View() string {
 
 		var status string
 		if m.loading {
-			status = m.spinner.View() + " Procesando..."
+			status = m.spinner.View() + " Processing..."
 		} else {
 			switch m.mode {
 			case modeChat:
-				status = "MODO: Chat | 'ls' to explore | 'exit' to stop the program."
+				status = "MODO: Chat | 'ls' to explore | 'exit' to exit"
 			case modeCreateFileInput:
 				status = "MODO: Create File | 'Enter' to confirm | 'Esc' to cancel"
 			case modeAIFilenameInput:
-				status = "MODO: AI Filename | 'Enter' to continue | 'Esc' to cancel"
+				status = "MODO: File Name (AI) | 'Enter' to continue | 'Esc' to cancel"
 			case modeAIPromptInput:
-				status = "MODO: AI Prompt | 'Enter' to generate | 'Esc' to cancel"
+				status = "MODO: Description (AI) | 'Enter' to generate | 'Esc' to cancel"
+			case modeAIModifyInput:
+				status = "MODO: Modify with AI | 'Enter' to send | 'Esc' to cancel"
 			}
 		}
 
@@ -479,6 +545,6 @@ func (m model) View() string {
 func Start(aiClient *ai.Client) {
 	p := tea.NewProgram(initialModel(aiClient), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		log.Fatal("Error al iniciar la aplicación: ", err)
+		log.Fatal("Error starting the application: ", err)
 	}
 }
