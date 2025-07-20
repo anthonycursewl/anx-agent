@@ -1,155 +1,184 @@
 <div align="center">
-<pre>
-  _   _    _    _   _ ____    _    ____ _____ 
- / \ | \ | |  / \  | \ | | __ )  / \  / ___| ____|
-/ _ \|  \| | / _ \ |  \| |  _ \ / _ \ \___ \|  _|
-/ ___ \ | |\  |/ ___ \| |\  | |_) / ___ \ ___) | |___
-/_/   \_\_| \_|_/   \_\_| \_\|____/_/   \_\____/|_____|
-</pre>
-<h1>ANX Agent</h1>
-<p><strong>A flexible and extensible AI agent framework for building command-line tools in Go.</strong></p>
-
-<p>
-    <a href="https://golang.org/"><img src="https://img.shields.io/badge/Go-1.20%2B-blue.svg" alt="Go Version"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
-    <a href="https://github.com/anthonycursewl/anx-agent/actions/workflows/go.yml"><img src="https://github.com/anthonycursewl/anx-agent/actions/workflows/go.yml/badge.svg" alt="Build Status"></a>
-    <a href="https://goreportcard.com/report/github.com/anthonycursewl/anx-agent"><img src="https://goreportcard.com/badge/github.com/anthonycursewl/anx-agent" alt="Go Report Card"></a>
-</p>
+  <img src="https://img.shields.io/badge/Go-1.20%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Version">
+  <img src="https://img.shields.io/badge/License-MIT-brightgreen?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/github/actions/workflow/status/anthonycursewl/anx-agent/go.yml?style=for-the-badge" alt="Build Status">
+  <img src="https://img.shields.io/github/go-mod/go-version/anthonycursewl/anx-agent?style=for-the-badge" alt="Go Version">
+  
+  <h1>🤖 ANX Agent</h1>
+  <h3>Build Smarter CLI Tools with AI-Powered Automation</h3>
+  
+  <p align="center">
+    <a href="#key-features">Features</a> •
+    <a href="#-getting-started">Quick Start</a> •
+    <a href="#-project-architecture">Architecture</a> •
+    <a href="#-development">Development</a>
+  </p>
+  
 </div>
 
-**ANX Agent** is a robust and modular framework written in Go for building powerful AI-driven command-line interface (CLI) tools.
+## 🚀 Introduction
 
----
+**ANX Agent** is a powerful, modular framework for building intelligent command-line applications with AI capabilities. Built in Go, it provides a solid foundation for creating CLI tools that can understand, process, and respond to complex commands using state-of-the-art AI models.
+
+```bash
+# Example usage (soon)
+anx-agent analyze --path ./my-project --report-format markdown
+```
 
 ## ✨ Key Features
 
-- **Extensible Architecture**: Easily add new AI providers, commands, and functionalities.
-- **Multi-AI Support**: Initially implemented with Gemini, but designed to support multiple AI services.
-- **Simple Configuration**: Configure your agent using a `config.yaml` file or environment variables.
-- **CLI-Focused**: Built from the ground up to power interactive and intelligent command-line applications.
-- **Centralized Logic**: The agent core coordinates all components for a cohesive workflow.
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://img.icons8.com/color/48/000000/expand-arrow--v1.png" width="42" height="42"/>
+        <h4>Extensible Architecture</h4>
+        <p>Easily add new AI providers, commands, and functionalities</p>
+      </td>
+      <td align="center">
+        <img src="https://img.icons8.com/color/48/000000/artificial-intelligence.png" width="42" height="42"/>
+        <h4>Multi-AI Support</h4>
+        <p>Designed to work with multiple AI services, starting with Gemini</p>
+      </td>
+      <td align="center">
+        <img src="https://img.icons8.com/color/48/000000/settings-3.png" width="42" height="42"/>
+        <h4>Simple Configuration</h4>
+        <p>Configure via YAML or environment variables</p>
+      </td>
+    </tr>
+  </table>
+</div>
 
-## 📂 Project Structure
-
-```
-.
-├── cmd/
-│   └── agentcli/         # Main CLI application entry point
-├── config/               # Configuration templates and examples
-├── internal/
-│   ├── agent/           # Core agent logic and interfaces
-│   ├── ai/              # AI client implementations (e.g., Gemini)
-│   ├── cli/             # Command-line interface components
-│   ├── config/          # Configuration management
-│   └── reporting/       # Reporting and output formatting
-├── pkg/                 # Reusable packages (if any)
-├── scripts/             # Utility scripts
-└── testdata/            # Test data and fixtures
-```
-
-## 🚀 Getting Started
+## 🛠 Installation
 
 ### Prerequisites
 
 - Go 1.20 or higher
-- A Gemini API key for AI functionality
+- A Gemini API key for AI functionality (or any other AI provider)
 
-### Installation
+### Quick Install
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/anthonycursewl/anx-agent.git
-    cd anx-agent
-    ```
+```bash
+# Clone the repository
+git clone https://github.com/anthonycursewl/anx-agent.git
+cd anx-agent
 
-2.  **Install dependencies:**
-    ```bash
-    go mod download
-    ```
+# Install dependencies
+go mod download
 
-### Configuration
+# Build the binary
+go build -o bin/anx-agent ./cmd/agentcli
 
-You can provide your API key in two ways:
+# Add to PATH (optional)
+export PATH=$PATH:$(pwd)/bin
+```
 
-**Option 1: `config.yaml` file**
+## ⚙️ Configuration
 
-Create a `config.yaml` file in the project root with the following content:
+### Option 1: YAML Configuration
+
+Create a `config.yaml` file:
 
 ```yaml
-gemini_api_key: "your-gemini-api-key-here"
+# config.yaml
+gemini_api_key: "your-api-key-here"
+log_level: "info"
+max_retries: 3
+timeout: "30s"
 ```
 
-**Option 2: Environment Variable**
-
-Export the API key as an environment variable. This method takes precedence over the configuration file.
+### Option 2: Environment Variables
 
 ```bash
-export GEMINI_API_KEY="your-gemini-api-key-here"
+export GEMINI_API_KEY="your-api-key-here"
+export ANX_LOG_LEVEL="debug"
 ```
 
-### Usage
+## 🚀 Usage Examples
 
-Run the agent from the project root:
-
+### Basic Usage
 ```bash
-# Build and run with default configuration
-go run ./cmd/agentcli
+# Start interactive mode
+anx-agent
 
-# Run with a custom configuration file
-go run ./cmd/agentcli --config /path/to/your/config.yaml
+# Analyze a specific directory
+anx-agent analyze --path ./src --output report.md
 
-# Analyze a specific file or directory
-go run ./cmd/agentcli --input /path/to/analyze
+# Get help
+anx-agent --help
 ```
 
-## 🔧 Project Architecture
-
-### Core Components
-
--   **CLI (Command Line Interface)**: Manages all user interaction (inputs, arguments, flags), controls the command execution flow, and provides a clear, interactive user experience.
--   **AI Client**: Abstracts communication with AI services like Gemini. It handles API requests, responses, and potential errors or retries.
--   **Configuration**: Loads settings from YAML files or environment variables and validates them to ensure the agent runs correctly.
--   **Agent Core**: Implements the main business logic, coordinates communication between the CLI, AI client, and other components, and manages state and context during execution.
-
-## 🛠️ Development
-
-### Building
-
-To create an executable binary:
-
+### Advanced Usage
 ```bash
-go build -o bin/anx-agent ./cmd/agentcli
+# Use a custom config file
+anx-agent --config /path/to/config.yaml
+
+# Enable debug logging
+anx-agent --log-level debug
+
+# Process specific file types
+anx-agent analyze --path . --extensions go,md,txt
 ```
 
-You can now run `./bin/anx-agent`.
+## 🏗 Project Structure
 
-### Testing
-
-```bash
-# Run all tests in the project
-go test ./...
-
-# Run tests and generate a coverage report
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
+```
+.
+├── cmd/                 # CLI entry points
+│   └── agentcli/        # Main CLI application
+├── config/              # Configuration templates
+├── internal/
+│   ├── agent/          # Core agent logic
+│   ├── ai/             # AI integrations
+│   ├── cli/            # CLI components
+│   ├── config/         # Configuration handling
+│   └── reporting/      # Output formatters
+└── testdata/           # Test fixtures
 ```
 
-### Adding New Features
+## 🧩 Extending ANX Agent
 
--   **Add a new AI Provider**:
-    1.  Create a new package under `internal/ai/`.
-    2.  Implement the `AIClient` interface.
-    3.  Register the new provider in the corresponding factory so the agent can use it.
+### Adding a New AI Provider
 
--   **Add a new Command**:
-    1.  Add the command logic in `internal/cli/commands/`.
-    2.  Register the new command in the CLI setup.
-    3.  Remember to add help text and documentation for the new command.
+1. Create a new package in `internal/ai/`
+2. Implement the `AIClient` interface
+3. Register your provider in the factory
 
-## 📝 License
+```go
+// Example: internal/ai/myprovider/client.go
+type MyAIClient struct {
+    // Implementation
+}
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+func NewMyAIClient(cfg Config) *MyAIClient {
+    // Initialization
+}
+```
 
 ## 🤝 Contributing
 
-Contributions are always welcome! If you want to improve the project, feel free to open a Pull Request.
+We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) to get started.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+## 📬 Contact
+
+Project Link: [https://github.com/anthonycursewl/anx-agent](https://github.com/anthonycursewl/anx-agent)
+
+## 🙏 Acknowledgments
+
+- [Go](https://golang.org/) - The programming language
+- [Cobra](https://github.com/spf13/cobra) - CLI library for Go
+- [Viper](https://github.com/spf13/viper) - Go configuration with fangs
+
+<div align="center">
+  Made with ❤️ by the ANX Team
+</div>
