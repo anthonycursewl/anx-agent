@@ -52,6 +52,7 @@ const (
 )
 
 type aiResponseMsg string
+
 type aiFileContentMsg struct {
 	fileName string
 	content  string
@@ -66,7 +67,9 @@ type fileReadMsg struct {
 	path    string
 	content []byte
 }
+
 type fileWrittenMsg string
+
 type errMsg struct{ err error }
 
 func (e errMsg) Error() string { return e.err.Error() }
@@ -82,7 +85,9 @@ func (i item) Title() string {
 	}
 	return "📄 " + filepath.Base(i.path)
 }
+
 func (i item) Description() string { return i.path }
+
 func (i item) FilterValue() string { return i.path }
 
 type model struct {
@@ -240,7 +245,7 @@ func (m *model) createFile(filePath string) tea.Cmd {
 	m.loading = true
 	if _, err := os.Stat(filePath); !os.IsNotExist(err) {
 		return func() tea.Msg {
-			return errMsg{fmt.Errorf("el archivo '%s' ya existe", filePath)}
+			return errMsg{fmt.Errorf("file '%s' already exists", filePath)}
 		}
 	}
 
@@ -511,15 +516,15 @@ func (m model) View() string {
 		} else {
 			switch m.mode {
 			case modeChat:
-				status = "MODO: Chat | 'ls' to explore | 'exit' to exit"
+				status = "MODE: Chat | 'ls' to explore | 'exit' to exit"
 			case modeCreateFileInput:
-				status = "MODO: Create File | 'Enter' to confirm | 'Esc' to cancel"
+				status = "MODE: Create File | 'Enter' to confirm | 'Esc' to cancel"
 			case modeAIFilenameInput:
-				status = "MODO: File Name (AI) | 'Enter' to continue | 'Esc' to cancel"
+				status = "MODE: File Name (AI) | 'Enter' to continue | 'Esc' to cancel"
 			case modeAIPromptInput:
-				status = "MODO: Description (AI) | 'Enter' to generate | 'Esc' to cancel"
+				status = "MODE: Description (AI) | 'Enter' to generate | 'Esc' to cancel"
 			case modeAIModifyInput:
-				status = "MODO: Modify with AI | 'Enter' to send | 'Esc' to cancel"
+				status = "MODE: Modify with AI | 'Enter' to send | 'Esc' to cancel"
 			}
 		}
 
